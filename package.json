@@ -11,5 +11,10 @@
     "@types/node": "^26.6.4",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@google/genai": "^2.27.0",
+    "openai": "^7.27.0",
+    "playwright": "^1.63.0"
   }
 }
