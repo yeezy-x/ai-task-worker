@@ -93,6 +93,7 @@ const inboxSeed: InboxMessage[] = [
     invoiceNumber: "",
     invoiceDate: "",
     amount: "",
+    
     lineItems: [],
   },
 ];

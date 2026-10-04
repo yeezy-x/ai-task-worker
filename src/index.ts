@@ -14,8 +14,8 @@ const defaultGoal =
 const goal =
   process.argv.slice(2).join(" ").trim() || defaultGoal;
 
-const {server,url} = await startServer();
-
+const {server} = await startServer();
+const url=company
 const browser = await chromium.launch({
   headless: false,
   slowMo: 1000,
