@@ -1,38 +1,45 @@
-export type AgentAction = ToolAction | CompleteAction | ClarifyAction | ApprovalAction;
+export type Status = "running" | "needs_approval" | "completed" | "failed" | "step_limit";
 
-export type ToolAction={
-    type:"tool",
-    tool:ToolName,
-    arguments:Record<string,string>
-}
+export type ToolName = "browser.navigate" | "browser.read" | "browser.click" | "browser.fill" | "browser.select";
 
-export type CompleteAction={
-    type:"complete",
-    summary:string
-}
+export type ToolCall = {
+  type: "tool";
+  tool: ToolName;
+  input: Record<string, string>;
+  reasoning: string;
+  facts?: string[];
+};
 
-export type ClarifyAction={
-    type:"clarify",
-    question:string
-}
+export type Completion = {
+  type: "complete";
+  summary: string;
+  evidence: string[];
+  facts?: string[];
+};
 
-export type ApprovalAction = {
-    type: "approval",
-    reason: string
-}
-export const TOOL_NAMES = ["browser.navigate", "browser.extract", "browser.click", "browser.fill"] as const;
-export type ToolName = (typeof TOOL_NAMES)[number];
+export type ApprovalRequest = { type: "approval"; reason: string; facts?: string[] };
+export type AgentDecision = ToolCall | Completion | ApprovalRequest;
 
-export type AgentStatus=| "running" | "complete" | "blocked" | "awaiting_approval" | "step_limit";
+export type Observation = {
+  at: string;
+  action: string;
+  ok: boolean;
+  summary: string;
+  detail: Record<string, unknown>;
+};
 
 export type AgentState = {
-    goal: string;
-    observations: string[];
-    facts: string[];
-    completedActions: string[];
-    failedActions: string[];
-    status: AgentStatus;
-    summary?: string;
-    question?: string;
-    approved?: boolean;
+  id: string;
+  goal: string;
+  status: Status;
+  observations: Observation[];
+  facts: string[];
+  completedActions: Observation[];
+  failedActions: Observation[];
+  startedAt: string;
+  finishedAt?: string;
+  finalSummary?: string;
+  evidence: string[];
+  lastMutationAt?: number;
+  verificationAt?: number;
 };
