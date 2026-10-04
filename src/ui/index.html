@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+
+    <title>WorkPilot</title>
+
+    <link rel="stylesheet" href="/index.css" />
+  </head>
+
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">W</div>
+
+          <div>
+            <div class="brand-name">WorkPilot</div>
+            <div class="brand-subtitle">
+              Autonomous AI Task Worker
+            </div>
+          </div>
+        </div>
+
+        <div class="connection-status">
+          <span class="status-dot"></span>
+          <span>Local Agent</span>
+        </div>
+      </header>
+
+      <main class="main-content">
+        <section class="hero">
+          <div>
+            <p class="eyebrow">AUTONOMOUS WORKER</p>
+
+            <h1>
+              Give WorkPilot a task.<br />
+              Let it figure out the work.
+            </h1>
+
+            <p class="hero-description">
+              WorkPilot plans actions, operates the company environment,
+              observes results, recovers from failures, and verifies
+              completion.
+            </p>
+          </div>
+        </section>
+
+        <section class="task-card">
+          <div class="section-heading">
+            <div>
+              <h2>Task</h2>
+              <p>
+                Describe the outcome you want WorkPilot to achieve.
+              </p>
+            </div>
+
+            <span id="run-status" class="status-badge idle">
+              Idle
+            </span>
+          </div>
+
+          <form id="task-form">
+            <textarea
+              id="goal"
+              name="goal"
+              spellcheck="false"
+            >Find Acme's latest invoice, extract its details, enter it into Operations, save it, and mark the invoice final.</textarea>
+
+            <div class="task-actions">
+              <button
+                id="run-button"
+                class="primary-button"
+                type="submit"
+              >
+                <span>Run task</span>
+                <span class="button-arrow">→</span>
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section class="workspace">
+          <div class="panel timeline-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-label">EXECUTION</p>
+                <h2>Agent timeline</h2>
+              </div>
+
+              <span id="event-count" class="event-count">
+                0 events
+              </span>
+            </div>
+
+            <div id="timeline" class="timeline">
+              <div class="empty-state">
+                <div class="empty-icon">○</div>
+
+                <p>No task is running.</p>
+
+                <span>
+                  Start a task to see WorkPilot's decisions and
+                  observations.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <aside class="side-column">
+            <div
+              id="approval-card"
+              class="panel approval-card hidden"
+            >
+              <div class="approval-icon">!</div>
+
+              <p class="panel-label">HUMAN APPROVAL</p>
+
+              <h2>Approval required</h2>
+
+              <p
+                id="approval-reason"
+                class="approval-reason"
+              ></p>
+
+              <div class="approval-actions">
+                <button
+                  id="approve-button"
+                  class="primary-button"
+                  type="button"
+                >
+                  Approve
+                </button>
+
+                <button
+                  id="reject-button"
+                  class="secondary-button"
+                  type="button"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+
+            <div class="panel evidence-panel">
+              <div class="panel-header compact">
+                <div>
+                  <p class="panel-label">RESULT</p>
+                  <h2>Final evidence</h2>
+                </div>
+              </div>
+
+              <div
+                id="summary"
+                class="summary empty-summary"
+              >
+                WorkPilot has not completed a task yet.
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="architecture">
+          <div class="architecture-header">
+            <p class="panel-label">HOW IT WORKS</p>
+
+            <h2>
+              Observe → Decide → Act → Verify
+            </h2>
+          </div>
+
+          <div class="architecture-flow">
+            <div class="architecture-step">
+              <span>01</span>
+              <strong>Observe</strong>
+              <small>
+                Read the current environment
+              </small>
+            </div>
+
+            <div class="flow-arrow">→</div>
+
+            <div class="architecture-step">
+              <span>02</span>
+              <strong>Decide</strong>
+              <small>
+                LLM selects the next action
+              </small>
+            </div>
+
+            <div class="flow-arrow">→</div>
+
+            <div class="architecture-step">
+              <span>03</span>
+              <strong>Act</strong>
+              <small>
+                Use generic browser tools
+              </small>
+            </div>
+
+            <div class="flow-arrow">→</div>
+
+            <div class="architecture-step">
+              <span>04</span>
+              <strong>Verify</strong>
+              <small>
+                Fresh read confirms the outcome
+              </small>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="index.js"></script>
+  </body>
+</html>

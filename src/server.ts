@@ -1,38 +1,85 @@
 import http from "node:http";
-import { pathToFileURL } from "node:url";
-import { createCompany, handleCompany } from "./company.js";
-import { Company } from "./company.js";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
-export function startServer(port = 0,host = "127.0.0.1"): Promise<{ url: string; company: Company; close: () => Promise<void> }> {
-  const company = createCompany();
-  const server = http.createServer((req, res) => {
-    handleCompany(company, req, res).catch(() => {
-      if (res.headersSent) return;
-      res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
-      res.end("Internal error");
-    });
-  });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-  return new Promise((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(port, host, () => {
-      const address = server.address();
-      if (!address || typeof address === "string") {
-        reject(new Error("Server did not bind to a TCP port"));
-        return;
-      }
-      resolve({
-        url: `http://${host}:${address.port}`,
-        company,
-        close: () => new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve()))),
+const uiDirectory = path.join(__dirname, "ui");
+
+console.log("UI Directory:", uiDirectory);
+
+function serveFile(
+  filePath: string,
+  contentType: string,
+  res: http.ServerResponse
+): void {
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      res.writeHead(404, {
+        "Content-Type": "text/plain",
       });
+
+      res.end("Error reading file");
+      return;
+    }
+
+    res.writeHead(200, {
+      "Content-Type": contentType,
     });
+
+    res.end(data);
   });
 }
 
-const entry = process.argv[1];
-if (entry && import.meta.url === pathToFileURL(entry).href) {
-  startServer(3000).then(({ url }) => {
-    console.log(url);
+export function startServer(): Promise<{
+  server: http.Server;
+  url: string;
+}> {
+  return new Promise((resolve, reject) => {
+    const server = http.createServer((req, res) => {
+      if (req.url === "/" && req.method === "GET") {
+        serveFile(
+          path.join(uiDirectory, "index.html"),
+          "text/html",
+          res
+        );
+        return;
+      }
+
+      if (req.url === "/index.css" && req.method === "GET") {
+        serveFile(
+          path.join(uiDirectory, "index.css"),
+          "text/css",
+          res
+        );
+
+        return;
+      }
+
+      if (req.url === "/index.js" && req.method === "GET") {
+        serveFile(
+          path.join(uiDirectory, "index.js"),
+          "application/javascript",
+          res
+        );
+
+        return;
+      }
+
+      res.writeHead(404, {
+        "Content-Type": "text/plain",
+      });
+
+      res.end("Not found");
+    });
+
+    server.listen(3000, () => {
+      const url = "http://localhost:3000";
+      console.log(`WorkPilot server running at ${url}`);
+      resolve({server,url});
+    });
+    server.on("error", reject);
   });
 }
