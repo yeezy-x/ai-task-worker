@@ -1,8 +1,9 @@
 import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { createCompany, handleCompany } from "./company.js";
+import { Company } from "./company.js";
 
-export function startServer(port = 0,host = "127.0.0.1"): Promise<{ url: string; close: () => Promise<void> }> {
+export function startServer(port = 0,host = "127.0.0.1"): Promise<{ url: string; company: Company; close: () => Promise<void> }> {
   const company = createCompany();
   const server = http.createServer((req, res) => {
     handleCompany(company, req, res).catch(() => {
@@ -22,7 +23,8 @@ export function startServer(port = 0,host = "127.0.0.1"): Promise<{ url: string;
       }
       resolve({
         url: `http://${host}:${address.port}`,
-        close: () => new Promise((res, rej) => server.close((err) => (err ? rej(err) : res()))),
+        company,
+        close: () => new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve()))),
       });
     });
   });

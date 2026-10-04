@@ -14,9 +14,27 @@ function clip(text: string): string {
     if (trimmed.length <= MAX_OBSERVATION) return trimmed;
     return `${trimmed.slice(0, MAX_OBSERVATION)}…`;
 }
+function unique(values: string[]): string[] {
+    return [...new Set(values)];
+}
+
 async function observe(page: Page): Promise<string> {
     const title = await page.title();
     const body = await page.locator("body").innerText();
+    const links = unique(
+      await page.getByRole("link").evaluateAll((elements) =>
+        elements
+          .map((element) => element.textContent?.replace(/\s+/g, " ").trim() ?? "")
+          .filter((name) => name.length > 0),
+      ),
+    );
+    const buttons = unique(
+      await page.getByRole("button").evaluateAll((elements) =>
+        elements
+          .map((element) => element.textContent?.replace(/\s+/g, " ").trim() ?? "")
+          .filter((name) => name.length > 0),
+      ),
+    );
     const fields = await page.locator("input, textarea").evaluateAll((elements) =>
       elements.map((element) => {
         const field = element as HTMLInputElement | HTMLTextAreaElement;
@@ -24,13 +42,46 @@ async function observe(page: Page): Promise<string> {
           ? document.querySelector(`label[for="${CSS.escape(field.id)}"]`)?.textContent?.trim()
           : "";
         const name = label || field.name || field.id || "field";
-        return `${name}: ${field.value}`;
+        const value = field.value.trim();
+        return `${name}: ${value || "(empty)"}`;
       }),
     );
-    const form = fields.length > 0 ? `\n\n${fields.join("\n")}` : "";
-    return clip(`${title}\n\n${body}${form}`);
+    const alerts = unique(
+      await page.locator("[role='alert']").evaluateAll((elements) =>
+        elements
+          .map((element) => element.textContent?.replace(/\s+/g, " ").trim() ?? "")
+          .filter((text) => text.length > 0),
+      ),
+    );
+    const controls = [
+      links.length > 0 ? `Links: ${links.join(" | ")}` : "",
+      buttons.length > 0 ? `Buttons: ${buttons.join(" | ")}` : "",
+      fields.length > 0 ? `Fields:\n${fields.join("\n")}` : "",
+      alerts.length > 0 ? `Alert: ${alerts.join(" ")}` : "",
+    ].filter(Boolean);
+    return clip([title, ...controls, body.trim()].filter(Boolean).join("\n\n"));
 }
 
+async function pageAlert(page: Page): Promise<string | undefined> {
+    const alerts = unique(
+      await page.locator("[role='alert']").evaluateAll((elements) =>
+        elements
+          .map((element) => element.textContent?.replace(/\s+/g, " ").trim() ?? "")
+          .filter((text) => text.length > 0),
+      ),
+    );
+    return alerts.length > 0 ? alerts.join(" ") : undefined;
+}
+
+
+async function outcome(page: Page): Promise<ToolResult> {
+    const observation = await observe(page);
+    const alert = await pageAlert(page);
+    if (alert) {
+      return { success: false, url: page.url(), observation, error: alert };
+    }
+    return { success: true, url: page.url(), observation };
+}
 
 function message(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
@@ -81,7 +132,8 @@ export function createBrowserTools(page:Page){
                 };
               }
               await target.click();
-              return { success: true, url: page.url(), observation: await observe(page) };
+              await page.waitForLoadState("domcontentloaded");
+              return await outcome(page);
             } catch (error) {
               return {
                 success: false,
@@ -103,7 +155,7 @@ export function createBrowserTools(page:Page){
                 };
               }
               await field.fill(args.value);
-              return { success: true, url: page.url(), observation: await observe(page) };
+              return await outcome(page);
             } catch (error) {
               return {
                 success: false,

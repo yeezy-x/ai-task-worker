@@ -1,4 +1,4 @@
-export type AgentAction=ToolAction | CompleteAction | ClarifyAction;
+export type AgentAction = ToolAction | CompleteAction | ClarifyAction | ApprovalAction;
 
 export type ToolAction={
     type:"tool",
@@ -15,6 +15,11 @@ export type ClarifyAction={
     type:"clarify",
     question:string
 }
+
+export type ApprovalAction = {
+    type: "approval",
+    reason: string
+}
 export const TOOL_NAMES = ["browser.navigate", "browser.extract", "browser.click", "browser.fill"] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
 
@@ -29,4 +34,5 @@ export type AgentState = {
     status: AgentStatus;
     summary?: string;
     question?: string;
+    approved?: boolean;
 };

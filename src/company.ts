@@ -24,6 +24,11 @@ type SavedInvoice = {
   invoiceDate: string;
   amount: string;
   lineItems: string;
+  finalized?: boolean;
+};
+
+type PendingInvoice = SavedInvoice & {
+  confirmed: boolean;
 };
 
 type Ticket = {
@@ -44,9 +49,10 @@ type Customer = {
   status: string;
 };
 
-type Company = {
+export type Company = {
   inbox: InboxMessage[];
   invoices: SavedInvoice[];
+  pendingInvoice: PendingInvoice;
   tickets: Ticket[];
   customers: Customer[];
   nextInvoiceId: number;
@@ -165,10 +171,29 @@ const customerSeed: Customer[] = [
   { id: "globex", name: "Globex", status: "Standard" },
 ];
 
+export function resetCompany(company: Company): void {
+  const fresh = createCompany();
+  company.inbox = fresh.inbox;
+  company.invoices = fresh.invoices;
+  company.pendingInvoice = fresh.pendingInvoice;
+  company.tickets = fresh.tickets;
+  company.customers = fresh.customers;
+  company.nextInvoiceId = fresh.nextInvoiceId;
+}
+
 export function createCompany(): Company {
   return {
     inbox: structuredClone(inboxSeed),
     invoices: structuredClone(invoiceSeed),
+    pendingInvoice: {
+      id: "pending-inv-2048",
+      customer: "Acme",
+      invoiceNumber: "INV-2048",
+      invoiceDate: "2026-09-28",
+      amount: "4750.00",
+      lineItems: "Platform subscription: 3500.00\nImplementation: 1250.00",
+      confirmed: false,
+    },
     tickets: structuredClone(ticketSeed),
     customers: structuredClone(customerSeed),
     nextInvoiceId: 2,
@@ -206,6 +231,16 @@ export async function handleCompany(
     const message = company.inbox.find((item) => item.id === inboxMatch[1]);
     if (!message) return sendHtml(res, layout("Not found", notFoundPage()), 404);
     return sendHtml(res, layout(message.subject, inboxDetailPage(message)));
+  }
+
+  if (method === "GET" && path === "/operations/pending-inv-2048") {
+    return sendHtml(
+      res,
+      layout(
+        company.pendingInvoice.invoiceNumber,
+        pendingInvoicePage(company.pendingInvoice),
+      ),
+    );
   }
 
   const operationMatch = path.match(/^\/operations\/([^/]+)$/);
@@ -251,12 +286,49 @@ export async function handleCompany(
         400,
       );
     }
+    const pending = company.pendingInvoice;
+    if (
+      !pending.confirmed &&
+      invoice.invoiceNumber === pending.invoiceNumber
+    ) {
+      return sendHtml(
+        res,
+        layout(
+          "Invoice could not be saved.",
+          invoiceFormPage(invoice, pendingBlockedMessage(pending), true),
+        ),
+        400,
+      );
+    }
     const saved: SavedInvoice = {
       id: `op-${company.nextInvoiceId++}`,
       ...invoice,
     };
     company.invoices.push(saved);
     return redirect(res, `/operations/${saved.id}`);
+  }
+
+  if (method === "POST" && path === "/operations/pending-inv-2048/confirm") {
+    const pending = company.pendingInvoice;
+    pending.confirmed = true;
+    const saved: SavedInvoice = {
+      id: `op-${company.nextInvoiceId++}`,
+      customer: pending.customer,
+      invoiceNumber: pending.invoiceNumber,
+      invoiceDate: pending.invoiceDate,
+      amount: pending.amount,
+      lineItems: pending.lineItems,
+    };
+    company.invoices.push(saved);
+    return redirect(res, `/operations/${saved.id}`);
+  }
+
+  const finalMatch = path.match(/^\/operations\/([^/]+)\/final$/);
+  if (method === "POST" && finalMatch) {
+    const invoice = company.invoices.find((item) => item.id === finalMatch[1]);
+    if (!invoice) return sendHtml(res, layout("Not found", notFoundPage()), 404);
+    invoice.finalized = true;
+    return redirect(res, `/operations/${invoice.id}`);
   }
 
   const noteMatch = path.match(/^\/support\/([^/]+)\/notes$/);
@@ -363,13 +435,22 @@ ${items}
 </ul>`;
 }
 
+function pendingBlockedMessage(pending: PendingInvoice): string {
+  return `Invoice ${pending.invoiceNumber} has a pending record. Review or update the pending record before saving.`;
+}
+
 function invoiceFormPage(
   values: Partial<SavedInvoice> = {},
   error = "",
+  blocked = false,
 ): string {
-  const notice = error ? `<p>${escapeHtml(error)}</p>` : "";
-  return `<h2>New invoice</h2>
-${notice}
+  const notice = blocked
+    ? `<h2>Invoice could not be saved.</h2>
+<p role="alert">${escapeHtml(error)}</p>
+<p><a href="/operations/pending-inv-2048">Review pending record</a></p>`
+    : `<h2>New invoice</h2>
+${error ? `<p>${escapeHtml(error)}</p>` : ""}`;
+  return `${notice}
 <form method="post" action="/operations">
   <p>
     <label for="customer">Customer</label>
@@ -396,13 +477,35 @@ ${notice}
 <p><a href="/operations">Back to operations</a></p>`;
 }
 
+function pendingInvoicePage(pending: PendingInvoice): string {
+  return `<h2>${escapeHtml(pending.invoiceNumber)}</h2>
+<p>Status: pending</p>
+<p>Customer: ${escapeHtml(pending.customer)}</p>
+<p>Invoice number: ${escapeHtml(pending.invoiceNumber)}</p>
+<p>Invoice date: ${escapeHtml(pending.invoiceDate)}</p>
+<p>Amount: ${escapeHtml(pending.amount)}</p>
+<p>Line items: ${escapeHtml(pending.lineItems)}</p>
+<form method="post" action="/operations/${escapeHtml(pending.id)}/confirm">
+  <p><button type="submit">Confirm pending invoice</button></p>
+</form>
+<p><a href="/operations">Back to operations</a></p>`;
+}
+
 function invoiceDetailPage(invoice: SavedInvoice): string {
+  const status = invoice.finalized ? "final" : "saved";
+  const finalize = invoice.finalized
+    ? ""
+    : `<form method="post" action="/operations/${escapeHtml(invoice.id)}/final">
+  <p><button type="submit">Mark invoice final</button></p>
+</form>`;
   return `<h2>${escapeHtml(invoice.invoiceNumber)}</h2>
+<p>Status: ${status}</p>
 <p>Customer: ${escapeHtml(invoice.customer)}</p>
 <p>Invoice number: ${escapeHtml(invoice.invoiceNumber)}</p>
 <p>Invoice date: ${escapeHtml(invoice.invoiceDate)}</p>
 <p>Amount: ${escapeHtml(invoice.amount)}</p>
 <p>Line items: ${escapeHtml(invoice.lineItems)}</p>
+${finalize}
 <p><a href="/operations">Back to operations</a></p>`;
 }
 
